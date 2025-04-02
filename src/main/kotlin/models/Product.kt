@@ -1,11 +1,12 @@
 package models
 
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.dao.id.IntIdTable
 
 @Serializable
 data class Product(
-    val id: Int? = null,
+    @Contextual val id: Int? = null,
     val name: String,
     val barcode: String?,
     val calories: Double,
@@ -14,6 +15,7 @@ data class Product(
     val carbohydrates: Double?,
     val mass: Double?
 )
+
 
 // Таблица в БД
 object Products : IntIdTable("products") {
