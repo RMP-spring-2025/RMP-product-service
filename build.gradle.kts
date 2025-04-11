@@ -30,7 +30,8 @@ dependencies {
     implementation("com.zaxxer:HikariCP:5.0.1")
 
     // Redis клиент
-
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.7.3")
     // Логирование
     implementation("ch.qos.logback:logback-classic:1.4.14")
 }

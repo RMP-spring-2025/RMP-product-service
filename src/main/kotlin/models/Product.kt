@@ -16,8 +16,6 @@ data class Product(
     val mass: Double?
 )
 
-
-// Таблица в БД
 object Products : IntIdTable("products") {
     val name = varchar("name", 255)
     val barcode = varchar("barcode", 50).nullable()

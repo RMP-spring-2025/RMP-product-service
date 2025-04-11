@@ -47,4 +47,3 @@ class ProductRepository {
         mass = row[Products.mass]
     )
 }
-

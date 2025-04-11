@@ -2,13 +2,10 @@ package config
 
 import io.lettuce.core.RedisClient
 import io.lettuce.core.api.StatefulRedisConnection
+import io.lettuce.core.api.sync.RedisCommands
 
 object RedisConfig {
-    private val redisClient = RedisClient.create("redis://redis:6379") // изменили localhost на redis
-    val connection: StatefulRedisConnection<String, String> = redisClient.connect()
-
-    fun close() {
-        connection.close()
-        redisClient.shutdown()
-    }
+    val client = RedisClient.create("redis://redis:6379")
+    val connection: StatefulRedisConnection<String, String> = client.connect()
+    val commands: RedisCommands<String, String> = connection.sync()
 }
