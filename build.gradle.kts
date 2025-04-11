@@ -34,6 +34,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.7.3")
     // Логирование
     implementation("ch.qos.logback:logback-classic:1.4.14")
+    implementation("org.liquibase:liquibase-core:4.17.0")
 }
 
 tasks.test {
