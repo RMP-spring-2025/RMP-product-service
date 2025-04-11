@@ -1,4 +1,5 @@
 import config.DatabaseConfig
+import config.LiquibaseConfig
 import config.RedisConfig
 import controllers.productRoutes
 import io.ktor.serialization.kotlinx.json.*
@@ -28,6 +29,8 @@ fun Application.module() {
 
     val repository = ProductRepository()
     val handler = ProductQueueHandler(repository)
+    LiquibaseConfig.migrate()
+    println("Миграции Liquibase выполнены")
 
     environment.monitor.subscribe(ApplicationStarted) {
         launch {
