@@ -12,7 +12,7 @@ data class ProductRequest(
     val requestId: Int,
     val type: String,
     val id: Int? = null,
-    val bcode: String? = null,
+    val bcode: Int? = null,
     val name: String? = null,
     val calories: Double? = null,
     val B: Double? = null,
@@ -114,7 +114,7 @@ class ProductQueueHandler(
                         val id = repository.addProduct(
                             Product(
                                 name = request.name ?: "unknown",
-                                barcode = request.bcode,
+                                bcode = request.bcode,
                                 calories = request.calories ?: 0.0,
                                 proteins = request.B,
                                 fats = request.Z,

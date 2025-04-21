@@ -23,8 +23,12 @@ fun Route.productRoutes() {
         }
 
         get("/bcode/{bcode}") {
-            val barcode = call.parameters["bcode"]
-            val product = barcode?.let { repository.getByBarcode(it) }
+            val bcode = call.parameters["bcode"]?.toIntOrNull()
+            if (bcode == null) {
+                call.respond(HttpStatusCode.BadRequest, "Некорректный штрих-код")
+                return@get
+            }
+            val product = repository.getByBarcode(bcode)
             if (product != null) {
                 call.respond(product)
             } else {

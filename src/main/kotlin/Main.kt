@@ -11,12 +11,14 @@ import io.ktor.server.routing.*
 import kotlinx.coroutines.launch
 import repositories.ProductRepository
 import services.ProductQueueHandler
+import services.UserServiceQueueHandler
 
 fun main() {
     embeddedServer(Netty, port = 8080, module = Application::module).start(wait = true)
 }
 
 fun Application.module() {
+
     install(ContentNegotiation) {
         json()
     }
@@ -29,12 +31,14 @@ fun Application.module() {
 
     val repository = ProductRepository()
     val handler = ProductQueueHandler(repository)
+
     LiquibaseConfig.migrate()
     println("Миграции Liquibase выполнены")
 
     environment.monitor.subscribe(ApplicationStarted) {
         launch {
             handler.handleRequests()
+            UserServiceQueueHandler(repository).handleRequests()
         }
     }
     configureRouting(repository)
