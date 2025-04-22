@@ -12,6 +12,9 @@ import kotlinx.coroutines.launch
 import repositories.ProductRepository
 import services.ProductQueueHandler
 import services.UserServiceQueueHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 fun main() {
     embeddedServer(Netty, port = 8080, module = Application::module).start(wait = true)
@@ -36,8 +39,11 @@ fun Application.module() {
     println("Миграции Liquibase выполнены")
 
     environment.monitor.subscribe(ApplicationStarted) {
-        launch {
+        val scope = CoroutineScope(Dispatchers.IO)
+        scope.launch {
             handler.handleRequests()
+        }
+        scope.launch {
             UserServiceQueueHandler(repository).handleRequests()
         }
     }

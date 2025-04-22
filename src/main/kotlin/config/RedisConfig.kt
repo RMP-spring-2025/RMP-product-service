@@ -5,7 +5,19 @@ import io.lettuce.core.api.StatefulRedisConnection
 import io.lettuce.core.api.sync.RedisCommands
 
 object RedisConfig {
-    val client = RedisClient.create("redis://redis:6379")
-    val connection: StatefulRedisConnection<String, String> = client.connect()
-    val commands: RedisCommands<String, String> = connection.sync()
+    init {
+        println("Initializing Redis connection...")
+    }
+
+    val client = RedisClient.create("redis://redis:6379").also {
+        println("Redis client created")
+    }
+
+    val connection: StatefulRedisConnection<String, String> = client.connect().also {
+        println("Redis connection established")
+    }
+
+    val commands: RedisCommands<String, String> = connection.sync().also {
+        println("Redis sync commands ready")
+    }
 }

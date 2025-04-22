@@ -8,7 +8,7 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 data class Product(
     @Contextual val id: Int? = null,
     val name: String,
-    val bcode: Int?,
+    val barcode: Int?,
     val calories: Double,
     val proteins: Double?,
     val fats: Double?,
@@ -18,7 +18,7 @@ data class Product(
 
 object Products : IntIdTable("products") {
     val name = varchar("name", 255)
-    val bcode = integer("bcode").nullable()
+    val barcode = integer("barcode").nullable()
     val calories = double("calories")
     val proteins = double("proteins").nullable()
     val fats = double("fats").nullable()
