@@ -1,15 +1,18 @@
 package services
 
+import handler.UUIDSerializer
 import io.lettuce.core.RedisClient
 import io.lettuce.core.api.coroutines
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
+import kotlinx.serialization.modules.SerializersModule
 import models.Product
 import repositories.ProductRepository
+import java.util.UUID
 
 @Serializable
 data class ProductRequest(
-    val requestId: Int,
+    @Contextual val requestId: UUID,
     val type: String,
     val id: Int? = null,
     val barcode: Int? = null,
@@ -23,7 +26,8 @@ data class ProductRequest(
 
 @Serializable
 data class ProductResponse(
-    val request_id: Int,
+    @SerialName("request_id")
+    @Contextual val requestId: UUID,
     val product_id: Int? = null,
     val name: String? = null,
     val calories: Double? = null,
@@ -40,14 +44,18 @@ class ProductQueueHandler(
 ) {
     private val client = RedisClient.create(redisUri)
     private val connection = client.connect().coroutines()
-    private val json = Json { ignoreUnknownKeys = true }
+
+    private val json = Json {
+        ignoreUnknownKeys = true
+        serializersModule = SerializersModule {
+            contextual(UUID::class, UUIDSerializer)
+        }
+    }
+
     suspend fun handleRequests() {
         while (true) {
             try {
-                val message = connection.blpop(0, "product_service_requests")?.value
-                if (message == null) {
-                    continue
-                }
+                val message = connection.blpop(0, "product_service_requests")?.value ?: continue
 
                 println("Получен запрос: $message")
 
@@ -59,45 +67,39 @@ class ProductQueueHandler(
                 }
 
                 val response = when (request.type) {
-                    "get_product_by_id" -> {
-                        val product = request.id?.let { repository.getById(it) }
-                        product?.let {
-                            ProductResponse(
-                                request_id = request.requestId,
-                                product_id = it.id!!,
-                                name = it.name,
-                                calories = it.calories,
-                                B = it.proteins,
-                                Z = it.fats,
-                                U = it.carbohydrates,
-                                mass = it.mass
-                            )
-                        }
+                    "get_product_by_id" -> request.id?.let { repository.getById(it) }?.let {
+                        ProductResponse(
+                            requestId = request.requestId,
+                            product_id = it.id!!,
+                            name = it.name,
+                            calories = it.calories,
+                            B = it.proteins,
+                            Z = it.fats,
+                            U = it.carbohydrates,
+                            mass = it.mass
+                        )
                     }
 
-                    "get_product_by_bcode" -> {
-                        val product = request.barcode?.let { repository.getByBarcode(it) }
-                        product?.let {
-                            ProductResponse(
-                                request_id = request.requestId,
-                                product_id = it.id!!,
-                                name = it.name,
-                                calories = it.calories,
-                                B = it.proteins,
-                                Z = it.fats,
-                                U = it.carbohydrates,
-                                mass = it.mass
-                            )
-                        }
+                    "get_product_by_bcode" -> request.barcode?.let { repository.getByBarcode(it) }?.let {
+                        ProductResponse(
+                            requestId = request.requestId,
+                            product_id = it.id!!,
+                            name = it.name,
+                            calories = it.calories,
+                            B = it.proteins,
+                            Z = it.fats,
+                            U = it.carbohydrates,
+                            mass = it.mass
+                        )
                     }
 
                     "get_products_by_name" -> {
                         val products = request.name?.let { repository.searchByName(it) } ?: emptyList()
                         ProductResponse(
-                            request_id = request.requestId,
+                            requestId = request.requestId,
                             products = products.map {
                                 ProductResponse(
-                                    request_id = request.requestId,
+                                    requestId = request.requestId,
                                     product_id = it.id!!,
                                     name = it.name,
                                     calories = it.calories,
@@ -123,7 +125,7 @@ class ProductQueueHandler(
                             )
                         )
                         ProductResponse(
-                            request_id = request.requestId,
+                            requestId = request.requestId,
                             product_id = id
                         )
                     }
@@ -134,11 +136,11 @@ class ProductQueueHandler(
                 println("Отправка ответа: $response")
 
                 response?.let {
-                    connection.rpush("product_service_response", json.encodeToString(it))
-                } ?: println("Ответ для запроса ${request.requestId} не был сгенерирован.")
+                    connection.rpush("product_service_response", json.encodeToString(ProductResponse.serializer(), it))
+                } ?: println("Ответ не был сгенерирован для запроса ${request.requestId}")
 
             } catch (e: Exception) {
-                println("Ошибка в процессе обработки запроса: ${e.message}")
+                println("Ошибка обработки запроса: ${e.message}")
             }
         }
     }
