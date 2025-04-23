@@ -20,14 +20,19 @@ data class ProductListRequest(
 data class ProductsResponse(
     @SerialName("request_id")
     @Contextual val requestId: UUID,
+    val products: List<ProductsDTO>
+
+)
+
+@Serializable
+data class ProductsDTO(
     val product_id: Int? = null,
     val name: String? = null,
     val calories: Double? = null,
     val B: Double? = null,
     val Z: Double? = null,
     val U: Double? = null,
-    val mass: Double? = null,
-    val products: List<ProductsResponse>? = null
+    val mass: Double? = null
 )
 
 class UserServiceQueueHandler(
@@ -65,8 +70,7 @@ class UserServiceQueueHandler(
                 val response = ProductsResponse(
                     requestId = request.requestId,
                     products = products.map {
-                        ProductsResponse(
-                            requestId = request.requestId,
+                        ProductsDTO(
                             product_id = it.id!!,
                             name = it.name,
                             calories = it.calories,
