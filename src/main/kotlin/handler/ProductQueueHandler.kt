@@ -15,7 +15,7 @@ data class ProductRequest(
     @Contextual val requestId: UUID,
     val type: String,
     val id: Int? = null,
-    val barcode: Int? = null,
+    val barcode: Long? = null,
     val name: String? = null,
     val calories: Double? = null,
     val B: Double? = null,

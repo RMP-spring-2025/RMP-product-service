@@ -28,7 +28,7 @@ fun Route.productRoutes() {
                 call.respond(HttpStatusCode.BadRequest, "Некорректный штрих-код")
                 return@get
             }
-            val product = repository.getByBarcode(barcode)
+            val product = repository.getByBarcode(barcode.toLong())
             if (product != null) {
                 call.respond(product)
             } else {

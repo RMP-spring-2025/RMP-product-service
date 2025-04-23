@@ -13,7 +13,7 @@ class ProductRepository {
             .singleOrNull()
     }
 
-    fun getByBarcode(barcode: Int): Product? = transaction {
+    fun getByBarcode(barcode: Long): Product? = transaction {
         Products.select { Products.barcode eq barcode }
             .map { rowToProduct(it) }
             .singleOrNull()
