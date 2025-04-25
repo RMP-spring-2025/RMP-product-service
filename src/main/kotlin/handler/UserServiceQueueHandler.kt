@@ -37,7 +37,7 @@ data class ProductsDTO(
 
 class UserServiceQueueHandler(
     private val repository: ProductRepository,
-    redisUri: String = "redis://redis:6379"
+    redisUri: String = System.getenv("KEYDB_URL") ?: "redis://redis:6379"
 ) {
     private val client = RedisClient.create(redisUri)
     private val connection = client.connect().coroutines()

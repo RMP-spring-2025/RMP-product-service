@@ -9,7 +9,7 @@ object RedisConfig {
         println("Initializing Redis connection...")
     }
 
-    val client = RedisClient.create("redis://redis:6379").also {
+    val client = RedisClient.create(System.getenv("KEYDB_URL") ?: "redis://redis:6379").also {
         println("Redis client created")
     }
 
