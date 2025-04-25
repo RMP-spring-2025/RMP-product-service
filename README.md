@@ -1,4 +1,5 @@
 # Сборка и запуск
+Руками создать файл в корне проекта ".env" со следующим содержимым:
 ```bash
 # PostgreSQL
 POSTGRES_DB=product_db
@@ -15,3 +16,4 @@ APP_PORT=8080
 
 ### docker-compose up -d --build
 
+Конец!
