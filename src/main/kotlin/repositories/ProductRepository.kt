@@ -13,8 +13,8 @@ class ProductRepository {
             .singleOrNull()
     }
 
-    fun getByBarcode(barcode: Long): Product? = transaction {
-        Products.select { Products.barcode eq barcode }
+    fun getByBarcode(bcode: Long): Product? = transaction {
+        Products.select { Products.bcode eq bcode }
             .map { rowToProduct(it) }
             .singleOrNull()
     }
@@ -27,7 +27,7 @@ class ProductRepository {
     fun addProduct(product: Product): Int = transaction {
         Products.insertAndGetId {
             it[name] = product.name
-            it[barcode] = product.barcode
+            it[bcode] = product.bcode
             it[calories] = product.calories
             it[proteins] = product.proteins
             it[fats] = product.fats
@@ -39,7 +39,7 @@ class ProductRepository {
     private fun rowToProduct(row: ResultRow) = Product(
         id = row[Products.id].value,
         name = row[Products.name],
-        barcode = row[Products.barcode],
+        bcode = row[Products.bcode],
         calories = row[Products.calories],
         proteins = row[Products.proteins],
         fats = row[Products.fats],

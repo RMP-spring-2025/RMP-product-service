@@ -15,7 +15,7 @@ data class ProductRequest(
     @Contextual val requestId: UUID,
     val type: String,
     val id: Int? = null,
-    val barcode: Long? = null,
+    val bcode: Long? = null,
     val name: String? = null,
     val calories: Double? = null,
     val B: Double? = null,
@@ -80,7 +80,7 @@ class ProductQueueHandler(
                         )
                     }
 
-                    "get_product_by_bcode" -> request.barcode?.let { repository.getByBarcode(it) }?.let {
+                    "get_product_by_bcode" -> request.bcode?.let { repository.getByBarcode(it) }?.let {
                         ProductResponse(
                             requestId = request.requestId,
                             product_id = it.id!!,
@@ -116,7 +116,7 @@ class ProductQueueHandler(
                         val id = repository.addProduct(
                             Product(
                                 name = request.name ?: "unknown",
-                                barcode = request.barcode,
+                                bcode = request.bcode,
                                 calories = request.calories ?: 0.0,
                                 proteins = request.B,
                                 fats = request.Z,
