@@ -18,7 +18,7 @@
             <column name="name" type="varchar(255)">
                 <constraints nullable="false"/>
             </column>
-            <column name="bcode" type="integer"/>
+            <column name="bcode" type="long"/>
             <column name="calories" type="double"/>
             <column name="proteins" type="double"/>
             <column name="fats" type="double"/>
