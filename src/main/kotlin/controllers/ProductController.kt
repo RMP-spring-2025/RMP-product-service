@@ -23,7 +23,7 @@ fun Route.productRoutes() {
         }
 
         get("/bcode/{bcode}") {
-            val bcode = call.parameters["bcode"]?.toIntOrNull()
+            val bcode = call.parameters["bcode"]?.toLongOrNull()
             if (bcode == null) {
                 call.respond(HttpStatusCode.BadRequest, "Некорректный штрих-код")
                 return@get
