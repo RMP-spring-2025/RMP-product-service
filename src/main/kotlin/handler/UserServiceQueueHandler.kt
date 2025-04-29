@@ -12,6 +12,7 @@ import java.util.UUID
 @Serializable
 data class ProductListRequest(
     @Contextual val requestId: UUID,
+    @SerialName("requestType")
     val type: String,
     val ids: List<Int>
 )
