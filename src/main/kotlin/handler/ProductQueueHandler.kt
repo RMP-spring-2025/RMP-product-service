@@ -13,6 +13,7 @@ import java.util.UUID
 @Serializable
 data class ProductRequest(
     @Contextual val requestId: UUID,
+    @SerialName("requestType")
     val type: String,
     val id: Int? = null,
     val bcode: Long? = null,
