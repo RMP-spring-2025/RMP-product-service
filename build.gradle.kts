@@ -16,13 +16,13 @@ repositories {
 
 dependencies {
     testImplementation(kotlin("test"))
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.6.4")
+//    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.6.4")
 //    implementation("io.lettuce:lettuce-core:6.2.3.RELEASE")
     implementation("io.ktor:ktor-server-core:2.3.4")
     implementation("io.ktor:ktor-server-netty:2.3.4")
     implementation("io.ktor:ktor-server-content-negotiation:2.3.4")
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.4")
-    implementation("io.lettuce:lettuce-core:6.5.5.RELEASE")
+    implementation("io.lettuce:lettuce-core:6.2.3.RELEASE")
 
     // PostgreSQL + Exposed ORM
     implementation("org.jetbrains.exposed:exposed-core:0.42.0")
