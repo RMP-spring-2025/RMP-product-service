@@ -13,14 +13,15 @@ import java.util.UUID
 @Serializable
 data class ProductRequest(
     @Contextual val requestId: UUID,
+    @SerialName("requestType")
     val type: String,
     val id: Int? = null,
     val bcode: Long? = null,
     val name: String? = null,
     val calories: Double? = null,
-    val B: Double? = null,
-    val Z: Double? = null,
-    val U: Double? = null,
+    @SerialName("b") val B: Double? = null,
+    @SerialName("z") val Z: Double? = null,
+    @SerialName("u") val U: Double? = null,
     val mass: Double? = null
 )
 
@@ -28,14 +29,13 @@ data class ProductRequest(
 data class ProductResponse(
     @SerialName("request_id")
     @Contextual val requestId: UUID,
-    val product_id: Int? = null,
+    @SerialName("product_id") val productId: Int? = null,
     val name: String? = null,
     val calories: Double? = null,
     val B: Double? = null,
     val Z: Double? = null,
     val U: Double? = null,
     val mass: Double? = null,
-    val products: List<ProductResponse>? = null
 )
 
 class ProductQueueHandler(
@@ -47,6 +47,7 @@ class ProductQueueHandler(
 
     private val json = Json {
         ignoreUnknownKeys = true
+        encodeDefaults = false
         serializersModule = SerializersModule {
             contextual(UUID::class, UUIDSerializer)
         }
@@ -55,7 +56,8 @@ class ProductQueueHandler(
     suspend fun handleRequests() {
         while (true) {
             try {
-                val message = connection.blpop(0, "product_service_requests")?.value ?: continue
+                val result = connection.blpop(60, "product_service_requests")
+                val message = result?.value ?: continue
 
                 println("Получен запрос: $message")
 
@@ -66,41 +68,56 @@ class ProductQueueHandler(
                     continue
                 }
 
-                val response = when (request.type) {
-                    "get_product_by_id" -> request.id?.let { repository.getById(it) }?.let {
-                        ProductResponse(
-                            requestId = request.requestId,
-                            product_id = it.id!!,
-                            name = it.name,
-                            calories = it.calories,
-                            B = it.proteins,
-                            Z = it.fats,
-                            U = it.carbohydrates,
-                            mass = it.mass
-                        )
+                when (request.type) {
+                    "get_product_by_id" -> {
+                        val product = request.id?.let { repository.getById(it) }
+                        val response = product?.let {
+                            ProductResponse(
+                                requestId = request.requestId,
+                                productId = it.id!!,
+                                name = it.name,
+                                calories = it.calories,
+                                B = it.proteins,
+                                Z = it.fats,
+                                U = it.carbohydrates,
+                                mass = it.mass
+                            )
+                        }
+
+                        println("Отправка ответа: $response")
+                        response?.let {
+                            connection.rpush("product_service_response", json.encodeToString(ProductResponse.serializer(), it))
+                        }
                     }
 
-                    "get_product_by_bcode" -> request.bcode?.let { repository.getByBarcode(it) }?.let {
-                        ProductResponse(
-                            requestId = request.requestId,
-                            product_id = it.id!!,
-                            name = it.name,
-                            calories = it.calories,
-                            B = it.proteins,
-                            Z = it.fats,
-                            U = it.carbohydrates,
-                            mass = it.mass
-                        )
+                    "get_product_by_bcode" -> {
+                        val product = request.bcode?.let { repository.getByBarcode(it) }
+                        val response = product?.let {
+                            ProductResponse(
+                                requestId = request.requestId,
+                                productId = it.id!!,
+                                name = it.name,
+                                calories = it.calories,
+                                B = it.proteins,
+                                Z = it.fats,
+                                U = it.carbohydrates,
+                                mass = it.mass
+                            )
+                        }
+
+                        println("Отправка ответа: $response")
+                        response?.let {
+                            connection.rpush("product_service_response", json.encodeToString(ProductResponse.serializer(), it))
+                        }
                     }
 
                     "get_products_by_name" -> {
                         val products = request.name?.let { repository.searchByName(it) } ?: emptyList()
-                        ProductResponse(
+                        val response = ProductsResponse(
                             requestId = request.requestId,
                             products = products.map {
-                                ProductResponse(
-                                    requestId = request.requestId,
-                                    product_id = it.id!!,
+                                ProductsDTO(
+                                    productId = it.id!!,
                                     name = it.name,
                                     calories = it.calories,
                                     B = it.proteins,
@@ -110,6 +127,9 @@ class ProductQueueHandler(
                                 )
                             }
                         )
+
+                        println("Отправка списка продуктов: $response")
+                        connection.rpush("product_service_response", json.encodeToString(ProductsResponse.serializer(), response))
                     }
 
                     "add_product" -> {
@@ -124,20 +144,32 @@ class ProductQueueHandler(
                                 mass = request.mass
                             )
                         )
-                        ProductResponse(
-                            requestId = request.requestId,
-                            product_id = id
-                        )
+
+                        val product = repository.getById(id!!)
+
+                        val response = product?.let {
+                            ProductResponse(
+                                requestId = request.requestId,
+                                productId = it.id,
+                                name = it.name,
+                                calories = it.calories,
+                                B = it.proteins,
+                                Z = it.fats,
+                                U = it.carbohydrates,
+                                mass = it.mass
+                            )
+                        }
+
+                        println("Отправка ответа: $response")
+                        response?.let {
+                            connection.rpush("product_service_response", json.encodeToString(ProductResponse.serializer(), it))
+                        }
                     }
 
-                    else -> null
+                    else -> {
+                        println("Неизвестный тип запроса: ${request.type}")
+                    }
                 }
-
-                println("Отправка ответа: $response")
-
-                response?.let {
-                    connection.rpush("product_service_response", json.encodeToString(ProductResponse.serializer(), it))
-                } ?: println("Ответ не был сгенерирован для запроса ${request.requestId}")
 
             } catch (e: Exception) {
                 println("Ошибка обработки запроса: ${e.message}")

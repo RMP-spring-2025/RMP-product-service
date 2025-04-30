@@ -21,12 +21,11 @@ data class ProductsResponse(
     @SerialName("request_id")
     @Contextual val requestId: UUID,
     val products: List<ProductsDTO>
-
 )
 
 @Serializable
 data class ProductsDTO(
-    val product_id: Int? = null,
+    @SerialName("product_id") val productId: Int,
     val name: String? = null,
     val calories: Double? = null,
     val B: Double? = null,
@@ -52,8 +51,8 @@ class UserServiceQueueHandler(
     suspend fun handleRequests() {
         while (true) {
             try {
-                val message = connection.blpop(0, "user_service_product_requests")?.value ?: continue
-
+                val result = connection.blpop(60,  "user_service_product_requests")
+                val message = result?.value ?: continue
                 println("Получен запрос от user-service: $message")
 
                 val request = try {
@@ -71,7 +70,7 @@ class UserServiceQueueHandler(
                     requestId = request.requestId,
                     products = products.map {
                         ProductsDTO(
-                            product_id = it.id!!,
+                            productId = it.id!!,
                             name = it.name,
                             calories = it.calories,
                             B = it.proteins,
