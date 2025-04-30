@@ -27,9 +27,9 @@ data class ProductRequest(
 
 @Serializable
 data class ProductResponse(
-    @SerialName("request_id")
+    @SerialName("requestId")
     @Contextual val requestId: UUID,
-    @SerialName("product_id") val productId: Int? = null,
+    @SerialName("productId") val productId: Int? = null,
     val name: String? = null,
     val calories: Double? = null,
     val B: Double? = null,

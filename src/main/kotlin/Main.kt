@@ -17,7 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 fun main() {
-    embeddedServer(Netty, port = 8080, module = Application::module).start(wait = true)
+    embeddedServer(Netty, port = 8084, module = Application::module).start(wait = true)
 }
 
 fun Application.module() {

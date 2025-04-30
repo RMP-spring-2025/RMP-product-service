@@ -18,14 +18,14 @@ data class ProductListRequest(
 
 @Serializable
 data class ProductsResponse(
-    @SerialName("request_id")
+    @SerialName("requestId")
     @Contextual val requestId: UUID,
     val products: List<ProductsDTO>
 )
 
 @Serializable
 data class ProductsDTO(
-    @SerialName("product_id") val productId: Int,
+    @SerialName("productId") val productId: Int,
     val name: String? = null,
     val calories: Double? = null,
     val B: Double? = null,
