@@ -1,0 +1,5 @@
+FROM gradle:8.13.0-jdk17 AS build
+WORKDIR /home/gradle/project
+VOLUME /home/gradle/project
+VOLUME /home/gradle/.gradle
+CMD ["gradle", "buildFatJar", "--no-daemon"]
