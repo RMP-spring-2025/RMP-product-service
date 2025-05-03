@@ -17,13 +17,6 @@ data class ProductListRequest(
 )
 
 @Serializable
-data class ProductsResponse(
-    @SerialName("requestId")
-    @Contextual val requestId: UUID,
-    val products: List<ProductsDTO>
-)
-
-@Serializable
 data class ProductsDTO(
     @SerialName("productId") val productId: Int,
     val name: String? = null,
@@ -43,6 +36,7 @@ class UserServiceQueueHandler(
 
     private val json = Json {
         ignoreUnknownKeys = true
+        encodeDefaults = false
         serializersModule = SerializersModule {
             contextual(UUID::class, UUIDSerializer)
         }
@@ -51,7 +45,7 @@ class UserServiceQueueHandler(
     suspend fun handleRequests() {
         while (true) {
             try {
-                val result = connection.blpop(60,  "user_service_product_requests")
+                val result = connection.blpop(60, "user_service_product_requests")
                 val message = result?.value ?: continue
                 println("Получен запрос от user-service: $message")
 
@@ -62,31 +56,49 @@ class UserServiceQueueHandler(
                     continue
                 }
 
-                if (request.type != "get_products_by_ids") continue
+                if (request.type != "get_products_by_ids") {
+                    println("Неизвестный тип запроса: ${request.type}")
+                    continue
+                }
 
                 val products = request.ids.mapNotNull { repository.getById(it) }
 
-                val response = ProductsResponse(
-                    requestId = request.requestId,
-                    products = products.map {
-                        ProductsDTO(
-                            productId = it.id!!,
-                            name = it.name,
-                            calories = it.calories,
-                            B = it.proteins,
-                            Z = it.fats,
-                            U = it.carbohydrates,
-                            mass = it.mass
-                        )
-                    }
-                )
+                val response = if (products.isEmpty()) {
+                    ServiceResponse<List<ProductsDTO>>(
+                        requestId = request.requestId,
+                        status = "not_found",
+                        errorMessage = "Продукты не найдены по заданным id: ${request.ids}"
+                    )
+                } else {
+                    ServiceResponse(
+                        requestId = request.requestId,
+                        status = "success",
+                        data = products.map {
+                            ProductsDTO(
+                                productId = it.id!!,
+                                name = it.name,
+                                calories = it.calories,
+                                B = it.proteins,
+                                Z = it.fats,
+                                U = it.carbohydrates,
+                                mass = it.mass
+                            )
+                        }
+                    )
+                }
 
                 println("Отправка ответа в user-service: $response")
-
-                connection.rpush("user_service_product_responses", json.encodeToString(ProductsResponse.serializer(), response))
+                connection.rpush("user_service_product_responses", json.encodeToString(response))
 
             } catch (e: Exception) {
                 println("Ошибка обработки запроса от user-service: ${e.message}")
+                val fallbackId = UUID.randomUUID()
+                val errorResponse = ServiceResponse<List<ProductsDTO>>(
+                    requestId = fallbackId,
+                    status = "error",
+                    errorMessage = "Ошибка обработки запроса: ${e.message}"
+                )
+                connection.rpush("user_service_product_responses", json.encodeToString(errorResponse))
             }
         }
     }
