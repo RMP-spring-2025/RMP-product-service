@@ -1,5 +1,4 @@
 package services
-
 import handler.UUIDSerializer
 import io.lettuce.core.RedisClient
 import io.lettuce.core.api.coroutines
@@ -35,7 +34,15 @@ data class ProductResponse(
     val B: Double? = null,
     val Z: Double? = null,
     val U: Double? = null,
-    val mass: Double? = null,
+    val mass: Double? = null
+)
+
+@Serializable
+data class ServiceResponse<T>(
+    @SerialName("requestId") @Contextual val requestId: UUID,
+    val status: String, // "success", "error", "not_found", "conflict"
+    val data: T? = null,
+    val errorMessage: String? = null
 )
 
 class ProductQueueHandler(
@@ -71,68 +78,77 @@ class ProductQueueHandler(
                 when (request.type) {
                     "get_product_by_id" -> {
                         val product = request.id?.let { repository.getById(it) }
-                        val response = product?.let {
-                            ProductResponse(
+
+                        val response = if (product != null) {
+                            ServiceResponse(
                                 requestId = request.requestId,
-                                productId = it.id!!,
-                                name = it.name,
-                                calories = it.calories,
-                                B = it.proteins,
-                                Z = it.fats,
-                                U = it.carbohydrates,
-                                mass = it.mass
+                                status = "success",
+                                data = ProductResponse(
+                                    requestId = request.requestId,
+                                    productId = product.id!!,
+                                    name = product.name,
+                                    calories = product.calories,
+                                    B = product.proteins,
+                                    Z = product.fats,
+                                    U = product.carbohydrates,
+                                    mass = product.mass
+                                )
+                            )
+                        } else {
+                            ServiceResponse<ProductResponse>(
+                                requestId = request.requestId,
+                                status = "not_found",
+                                errorMessage = "Продукт с id=${request.id} не найден."
                             )
                         }
 
                         println("Отправка ответа: $response")
-                        response?.let {
-                            connection.rpush("product_service_response", json.encodeToString(ProductResponse.serializer(), it))
-                        }
+                        connection.rpush("product_service_response", json.encodeToString(response))
                     }
 
                     "get_product_by_bcode" -> {
                         val product = request.bcode?.let { repository.getByBarcode(it) }
-                        val response = product?.let {
-                            ProductResponse(
+                        val response = if (product != null) {
+                            ServiceResponse(
                                 requestId = request.requestId,
-                                productId = it.id!!,
-                                name = it.name,
-                                calories = it.calories,
-                                B = it.proteins,
-                                Z = it.fats,
-                                U = it.carbohydrates,
-                                mass = it.mass
+                                status = "success",
+                                data = ProductResponse(
+                                    requestId = request.requestId,
+                                    productId = product.id!!,
+                                    name = product.name,
+                                    calories = product.calories,
+                                    B = product.proteins,
+                                    Z = product.fats,
+                                    U = product.carbohydrates,
+                                    mass = product.mass
+                                )
+                            )
+                        } else {
+                            ServiceResponse<ProductResponse>(
+                                requestId = request.requestId,
+                                status = "not_found",
+                                errorMessage = "Продукт с баркодом ${request.bcode} не найден."
                             )
                         }
 
                         println("Отправка ответа: $response")
-                        response?.let {
-                            connection.rpush("product_service_response", json.encodeToString(ProductResponse.serializer(), it))
-                        }
-                    }
-
-                    "get_products_by_name" -> {
-                        val products = request.name?.let { repository.searchByName(it) } ?: emptyList()
-                        val response = ProductsResponse(
-                            requestId = request.requestId,
-                            products = products.map {
-                                ProductsDTO(
-                                    productId = it.id!!,
-                                    name = it.name,
-                                    calories = it.calories,
-                                    B = it.proteins,
-                                    Z = it.fats,
-                                    U = it.carbohydrates,
-                                    mass = it.mass
-                                )
-                            }
-                        )
-
-                        println("Отправка списка продуктов: $response")
-                        connection.rpush("product_service_response", json.encodeToString(ProductsResponse.serializer(), response))
+                        connection.rpush("product_service_response", json.encodeToString(response))
                     }
 
                     "add_product" -> {
+                        val existingProduct = request.bcode?.let { repository.getByBarcode(it) }
+                        println(existingProduct)
+                        if (existingProduct != null) {
+                            val errorResponse = ServiceResponse<ProductResponse>(
+                                requestId = request.requestId,
+                                status = "conflict",
+                                errorMessage = "Продукт с таким баркодом уже существует."
+                            )
+                            println("Отправка ответа: $errorResponse")
+                            connection.rpush("product_service_response", json.encodeToString(errorResponse))
+                            continue
+                        }
+
                         val id = repository.addProduct(
                             Product(
                                 name = request.name ?: "unknown",
@@ -147,30 +163,29 @@ class ProductQueueHandler(
 
                         val product = repository.getById(id!!)
 
-                        val response = product?.let {
-                            ProductResponse(
+                        val successResponse = ServiceResponse(
+                            requestId = request.requestId,
+                            status = "success",
+                            data = ProductResponse(
                                 requestId = request.requestId,
-                                productId = it.id,
-                                name = it.name,
-                                calories = it.calories,
-                                B = it.proteins,
-                                Z = it.fats,
-                                U = it.carbohydrates,
-                                mass = it.mass
+                                productId = product?.id,
+                                name = product?.name,
+                                calories = product?.calories,
+                                B = product?.proteins,
+                                Z = product?.fats,
+                                U = product?.carbohydrates,
+                                mass = product?.mass
                             )
-                        }
+                        )
 
-                        println("Отправка ответа: $response")
-                        response?.let {
-                            connection.rpush("product_service_response", json.encodeToString(ProductResponse.serializer(), it))
-                        }
+                        println("Отправка ответа: $successResponse")
+                        connection.rpush("product_service_response", json.encodeToString(successResponse))
                     }
 
                     else -> {
                         println("Неизвестный тип запроса: ${request.type}")
                     }
                 }
-
             } catch (e: Exception) {
                 println("Ошибка обработки запроса: ${e.message}")
             }

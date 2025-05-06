@@ -18,7 +18,7 @@ data class Product(
 
 object Products : IntIdTable("products") {
     val name = varchar("name", 255)
-    val bcode = long("bcode").nullable()
+    val bcode = long("bcode").uniqueIndex().nullable()
     val calories = double("calories")
     val proteins = double("proteins").nullable()
     val fats = double("fats").nullable()
