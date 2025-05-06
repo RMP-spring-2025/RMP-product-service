@@ -44,6 +44,12 @@ data class ServiceResponse<T>(
     val data: T? = null,
     val errorMessage: String? = null
 )
+@Serializable
+data class ProductsResponse(
+    @SerialName("requestId")
+    @Contextual val requestId: UUID,
+    val products: List<ProductsDTO>
+)
 
 class ProductQueueHandler(
     private val repository: ProductRepository,
@@ -134,11 +140,42 @@ class ProductQueueHandler(
                         println("Отправка ответа: $response")
                         connection.rpush("product_service_response", json.encodeToString(response))
                     }
+                    "get_products_by_name" -> {
+                        val products = request.name?.let { repository.searchByName(it) } ?: emptyList()
+                        val response = if (products.isNotEmpty()) {
+                            ServiceResponse(
+                                requestId = request.requestId,
+                                status = "success",
+                                data = ProductsResponse(
+                                    requestId = request.requestId,
+                                    products = products.map {
+                                        ProductsDTO(
+                                            productId = it.id!!,
+                                            name = it.name,
+                                            calories = it.calories,
+                                            B = it.proteins,
+                                            Z = it.fats,
+                                            U = it.carbohydrates,
+                                            mass = it.mass
+                                        )
+                                    }
+                                )
+                            )
+                        } else {
+                            ServiceResponse<ProductsResponse>(
+                                requestId = request.requestId,
+                                status = "not_found",
+                                errorMessage = "Продукты с именем '${request.name}' не найдены."
+                            )
+                        }
+
+                        println("Отправка списка продуктов: $response")
+                        connection.rpush("product_service_response", json.encodeToString(response))
+                    }
 
                     "add_product" -> {
                         val existingProduct = request.bcode?.let { repository.getByBarcode(it) }
-                        println(existingProduct)
-                        if (existingProduct != null) {
+                        if (existingProduct?.bcode == request.bcode) {
                             val errorResponse = ServiceResponse<ProductResponse>(
                                 requestId = request.requestId,
                                 status = "conflict",
