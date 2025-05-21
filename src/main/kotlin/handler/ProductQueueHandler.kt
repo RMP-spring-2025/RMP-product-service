@@ -62,6 +62,9 @@ class ProductQueueHandler(
 ) {
     private val client = RedisClient.create(redisUri)
     private val connection = client.connect().coroutines()
+
+    private val client2 = RedisClient.create(redisUri)
+    private val connection2 = client2.connect().coroutines()
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = false
@@ -116,7 +119,7 @@ class ProductQueueHandler(
                                 }
 
                                 println("[$threadIndex] Отправка ответа: $response")
-                                connection.rpush("product_service_response", json.encodeToString(response))
+                                connection2.rpush("product_service_response", json.encodeToString(response))
                             }
 
                             "get_product_by_bcode" -> {
@@ -145,7 +148,7 @@ class ProductQueueHandler(
                                 }
 
                                 println("[$threadIndex] Отправка ответа: $response")
-                                connection.rpush("product_service_response", json.encodeToString(response))
+                                connection2.rpush("product_service_response", json.encodeToString(response))
                             }
 
                             "get_products_by_name" -> {
@@ -178,7 +181,7 @@ class ProductQueueHandler(
                                 }
 
                                 println("[$threadIndex] Отправка списка продуктов: $response")
-                                connection.rpush("product_service_response", json.encodeToString(response))
+                                connection2.rpush("product_service_response", json.encodeToString(response))
                             }
 
                             "add_product" -> {
@@ -190,7 +193,7 @@ class ProductQueueHandler(
                                         errorMessage = "Продукт с таким баркодом уже существует."
                                     )
                                     println("[$threadIndex] Отправка ответа: $errorResponse")
-                                    connection.rpush("product_service_response", json.encodeToString(errorResponse))
+                                    connection2.rpush("product_service_response", json.encodeToString(errorResponse))
                                     return@launch
                                 }
 
@@ -224,7 +227,7 @@ class ProductQueueHandler(
                                 )
 
                                 println("[$threadIndex] Отправка ответа: $successResponse")
-                                connection.rpush("product_service_response", json.encodeToString(successResponse))
+                                connection2.rpush("product_service_response", json.encodeToString(successResponse))
                             }
 
                             else -> {
