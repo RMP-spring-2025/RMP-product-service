@@ -1,5 +1,10 @@
 package services
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+
 import handler.UUIDSerializer
 import io.lettuce.core.RedisClient
 import io.lettuce.core.api.coroutines
@@ -33,7 +38,6 @@ class UserServiceQueueHandler(
 ) {
     private val client = RedisClient.create(redisUri)
     private val connection = client.connect().coroutines()
-
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = false
@@ -42,63 +46,67 @@ class UserServiceQueueHandler(
         }
     }
 
-    suspend fun handleRequests() {
-        while (true) {
-            try {
-                val result = connection.blpop(60, "user_service_product_requests")
-                val message = result?.value ?: continue
-                println("Получен запрос от user-service: $message")
+    fun launchConsumers(scope: CoroutineScope, threads: Int = 8) {
+        repeat(threads) {
+            scope.launch(Dispatchers.IO) {
+                while (true) {
+                    try {
+                        val result = connection.blpop(60, "user_service_product_requests")
+                        val message = result?.value ?: continue
+                        println("[$it] Получен запрос от user-service: $message")
 
-                val request = try {
-                    json.decodeFromString(ProductListRequest.serializer(), message)
-                } catch (e: Exception) {
-                    println("Ошибка декодирования: ${e.message}")
-                    continue
-                }
+                        val request = try {
+                            json.decodeFromString(ProductListRequest.serializer(), message)
+                        } catch (e: Exception) {
+                            println("Ошибка декодирования: ${e.message}")
+                            continue
+                        }
 
-                if (request.type != "get_products_by_ids") {
-                    println("Неизвестный тип запроса: ${request.type}")
-                    continue
-                }
+                        if (request.type != "get_products_by_ids") {
+                            println("Неизвестный тип запроса: ${request.type}")
+                            continue
+                        }
 
-                val products = request.ids.mapNotNull { repository.getById(it) }
+                        val products = request.ids.mapNotNull { repository.getById(it) }
 
-                val response = if (products.isEmpty()) {
-                    ServiceResponse<List<ProductsDTO>>(
-                        requestId = request.requestId,
-                        status = "not_found",
-                        errorMessage = "Продукты не найдены по заданным id: ${request.ids}"
-                    )
-                } else {
-                    ServiceResponse(
-                        requestId = request.requestId,
-                        status = "success",
-                        data = products.map {
-                            ProductsDTO(
-                                productId = it.id!!,
-                                name = it.name,
-                                calories = it.calories,
-                                B = it.proteins,
-                                Z = it.fats,
-                                U = it.carbohydrates,
-                                mass = it.mass
+                        val response = if (products.isEmpty()) {
+                            ServiceResponse<List<ProductsDTO>>(
+                                requestId = request.requestId,
+                                status = "not_found",
+                                errorMessage = "Продукты не найдены по заданным id: ${request.ids}"
+                            )
+                        } else {
+                            ServiceResponse(
+                                requestId = request.requestId,
+                                status = "success",
+                                data = products.map {
+                                    ProductsDTO(
+                                        productId = it.id!!,
+                                        name = it.name,
+                                        calories = it.calories,
+                                        B = it.proteins,
+                                        Z = it.fats,
+                                        U = it.carbohydrates,
+                                        mass = it.mass
+                                    )
+                                }
                             )
                         }
-                    )
+
+                        println("[$it] Отправка ответа в user-service: $response")
+                        connection.rpush("user_service_product_responses", json.encodeToString(response))
+
+                    } catch (e: Exception) {
+                        println("Ошибка обработки запроса: ${e.message}")
+                        val fallbackId = UUID.randomUUID()
+                        val errorResponse = ServiceResponse<List<ProductsDTO>>(
+                            requestId = fallbackId,
+                            status = "error",
+                            errorMessage = "Ошибка обработки запроса: ${e.message}"
+                        )
+                        connection.rpush("user_service_product_responses", json.encodeToString(errorResponse))
+                    }
                 }
-
-                println("Отправка ответа в user-service: $response")
-                connection.rpush("user_service_product_responses", json.encodeToString(response))
-
-            } catch (e: Exception) {
-                println("Ошибка обработки запроса от user-service: ${e.message}")
-                val fallbackId = UUID.randomUUID()
-                val errorResponse = ServiceResponse<List<ProductsDTO>>(
-                    requestId = fallbackId,
-                    status = "error",
-                    errorMessage = "Ошибка обработки запроса: ${e.message}"
-                )
-                connection.rpush("user_service_product_responses", json.encodeToString(errorResponse))
             }
         }
     }
